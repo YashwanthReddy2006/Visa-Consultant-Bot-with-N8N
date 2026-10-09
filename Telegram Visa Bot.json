@@ -1,0 +1,1369 @@
+{
+  "name": "Telegram Visa Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "id": "c94dbaed-5989-45f2-a719-56b8b5f6b598",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        16,
+        224
+      ],
+      "webhookId": "172283c6-14c2-43f6-a737-ec045ffc11f3",
+      "credentials": {
+        "telegramApi": {
+          "id": "7BIktcKReXe6N1qT",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "n1",
+              "name": "chat_id",
+              "type": "string",
+              "value": "={{ String($json.message?.chat?.id ?? $json.callback_query?.message?.chat?.id ?? \"\") }}"
+            },
+            {
+              "id": "n2",
+              "name": "text",
+              "type": "string",
+              "value": "={{ ($json.message?.text ?? \"\").trim() }}"
+            },
+            {
+              "id": "n3",
+              "name": "callback_data",
+              "type": "string",
+              "value": "={{ $json.callback_query?.data ?? \"\" }}"
+            },
+            {
+              "id": "n4",
+              "name": "callback_id",
+              "type": "string",
+              "value": "={{ $json.callback_query?.id ?? \"\" }}"
+            },
+            {
+              "id": "n5",
+              "name": "is_callback",
+              "type": "boolean",
+              "value": "={{ !!$json.callback_query }}"
+            },
+            {
+              "id": "n6",
+              "name": "first_name",
+              "type": "string",
+              "value": "={{ $json.message?.from?.first_name ?? $json.callback_query?.from?.first_name ?? \"\" }}"
+            },
+            {
+              "id": "n7",
+              "name": "username",
+              "type": "string",
+              "value": "={{ $json.message?.from?.username ?? $json.callback_query?.from?.username ?? \"\" }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4f7c4837-ba36-47c0-b5f1-1581edd1b52d",
+      "name": "Normalize Telegram Update",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        272,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1GyUhJtO8ok7zm4amZ_CswqTGfN78cs7g-O4XcpfLXbA",
+          "cachedResultName": "Visa information"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "2026392259",
+          "cachedResultName": "Sessions"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "chat_id",
+              "lookupValue": "={{ $json.chat_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1236b4d5-e418-48f4-9d67-8c76109aec73",
+      "name": "Get Session",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        496,
+        224
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SxpfDDbXRkfdq0g8",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ String($json.chat_id ?? \"\") }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "c2",
+              "leftValue": "={{ $(\"Normalize Telegram Update\").item.json.text.toLowerCase() }}",
+              "rightValue": "/start",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f3f554a7-dec5-4838-b2a1-94fbd6d91011",
+      "name": "Session Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const u = $('Normalize Telegram Update').item.json;\nconst s = Object.assign({}, $json);\nconst input = (u.callback_data || u.text || '').trim();\nconst lang = s.language === 'te' ? 'te' : 'en';\n\nconst T = {\n  en: {\n    askVisa: 'Please choose your visa type:',\n    askCountry: 'Which country do you want to travel to?',\n    askOther: 'Please type the name of the destination country:',\n    askName: 'Please enter your full name (as on passport):',\n    askDob: 'Please enter your date of birth (DD/MM/YYYY):',\n    askPassport: 'Please enter your passport number:',\n    askEmail: 'Please enter your email address:',\n    askPhone: 'Please enter your phone number with country code, starting with + (e.g. +919876543210):',\n    badCountry: 'That does not look like a valid country name. Please type letters only (min 3).',\n    badName: 'Invalid name. Use letters and spaces only, at least 3 characters.',\n    badDob: 'Invalid date. Please use DD/MM/YYYY and a real date in the past.',\n    badPassport: 'Invalid passport number. Use 6-9 letters/digits, e.g. A1234567.',\n    badEmail: 'Invalid email address. Please try again.',\n    badPhone: 'Invalid phone number. Country code is required - start with + followed by country code and number (e.g. +919876543210).',\n    useButtons: 'Please use the buttons below.',\n    review: 'Please review your details:',\n    confirmQ: 'Is everything correct?',\n    cancelled: 'Your application was cancelled. Send /start to begin again.',\n    submittedAlready: 'Your application has already been submitted (ID: {id}). Send /start to start a new one.',\n    success: 'Your visa application has been submitted successfully!\\n\\nApplication ID: <b>{id}</b>\\n\\nOur visa consultant will contact you soon.\\n\\nContact us: 8121819904',\n    labels: ['Visa type', 'Country', 'Full name', 'Date of birth', 'Passport', 'Email', 'Phone'],\n  },\n  te: {\n    askVisa: 'దయచేసి మీ వీసా రకాన్ని ఎంచుకోండి:',\n    askCountry: 'మీరు ఏ దేశానికి వెళ్లాలనుకుంటున్నారు?',\n    askOther: 'దయచేసి గమ్య దేశం పేరును టైప్ చేయండి:',\n    askName: 'దయచేసి మీ పూర్తి పేరును నమోదు చేయండి (పాస్‌పోర్ట్‌లో ఉన్నట్లు):',\n    askDob: 'దయచేసి మీ పుట్టిన తేదీని నమోదు చేయండి (DD/MM/YYYY):',\n    askPassport: 'దయచేసి మీ పాస్‌పోర్ట్ నంబర్‌ను నమోదు చేయండి:',\n    askEmail: 'దయచేసి మీ ఇమెయిల్ చిరునామాను నమోదు చేయండి:',\n    askPhone: 'దయచేసి మీ ఫోన్ నంబర్‌ను నమోదు చేయండి (+ తో ప్రారంభించి కంట్రీ కోడ్‌తో, ఉదా. +919876543210):',\n    badCountry: 'సరైన దేశం పేరు కాదు. అక్షరాలు మాత్రమే టైప్ చేయండి (కనీసం 3).',\n    badName: 'పేరు సరైనది కాదు. అక్షరాలు మరియు ఖాళీలు మాత్రమే, కనీసం 3 అక్షరాలు.',\n    badDob: 'తేదీ సరైనది కాదు. DD/MM/YYYY ఫార్మాట్‌లో గత తేదీని నమోదు చేయండి.',\n    badPassport: 'పాస్‌పోర్ట్ నంబర్ సరైనది కాదు. 6-9 అక్షరాలు/అంకెలు, ఉదా. A1234567.',\n    badEmail: 'ఇమెయిల్ చిరునామా సరైనది కాదు. మళ్ళీ ప్రయత్నించండి.',\n    badPhone: 'ఫోన్ నంబర్ సరైనది కాదు. కంట్రీ కోడ్ తప్పనిసరి - + తో ప్రారంభించండి (ఉదా. +919876543210).',\n    useButtons: 'దయచేసి క్రింది బటన్‌లను ఉపయోగించండి.',\n    review: 'దయచేసి మీ వివరాలను సమీక్షించండి:',\n    confirmQ: 'అన్నీ సరిగ్గా ఉన్నాయా?',\n    cancelled: 'మీ దరఖాస్తు రద్దు చేయబడింది. మళ్ళీ ప్రారంభించడానికి /start పంపండి.',\n    submittedAlready: 'మీ దరఖాస్తు ఇప్పటికే సమర్పించబడింది (ID: {id}). కొత్తది కోసం /start పంపండి.',\n    success: 'మీ వీసా దరఖాస్తు విజయవంతంగా సమర్పించబడింది!\\n\\nదరఖాస్తు ID: <b>{id}</b>\\n\\nమా వీసా కన్సల్టెంట్ త్వరలో మిమ్మల్ని సంప్రదిస్తారు.\\n\\nమమ్మల్ని సంప్రదించండి: 8121819904',\n    labels: ['వీసా రకం', 'దేశం', 'పూర్తి పేరు', 'పుట్టిన తేదీ', 'పాస్‌పోర్ట్', 'ఇమెయిల్', 'ఫోన్'],\n  },\n};\n\nconst VISA = { visa_tourist: 'Tourist', visa_student: 'Student', visa_work: 'Work', visa_business: 'Business' };\nconst COUNTRY = { c_usa: 'USA', c_uk: 'UK', c_canada: 'Canada', c_australia: 'Australia', c_germany: 'Germany' };\n\nlet route = 'text';\nlet reply = '';\nlet t = T[lang];\nlet application = null;\n\nfunction esc(v) { return String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }\nfunction reviewText() {\n  const L = t.labels;\n  return t.review + '\\n\\n' +\n    '<b>' + L[0] + ':</b> ' + esc(s.visa_type) + '\\n' +\n    '<b>' + L[1] + ':</b> ' + esc(s.country) + '\\n' +\n    '<b>' + L[2] + ':</b> ' + esc(s.full_name) + '\\n' +\n    '<b>' + L[3] + ':</b> ' + esc(s.dob) + '\\n' +\n    '<b>' + L[4] + ':</b> ' + esc(s.passport) + '\\n' +\n    '<b>' + L[5] + ':</b> ' + esc(s.email) + '\\n' +\n    '<b>' + L[6] + ':</b> ' + esc(s.phone) + '\\n\\n' + t.confirmQ;\n}\nfunction validDob(v) {\n  const m = /^(\\d{2})\\/(\\d{2})\\/(\\d{4})$/.exec(v);\n  if (!m) return false;\n  const d = +m[1], mo = +m[2], y = +m[3];\n  const dt = new Date(Date.UTC(y, mo - 1, d));\n  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) return false;\n  const now = new Date();\n  return dt < now && y > now.getUTCFullYear() - 120;\n}\n\nswitch (s.current_step) {\n  case 'start': {\n    if (input === 'lang_en' || input === 'lang_te') {\n      s.language = input === 'lang_te' ? 'te' : 'en';\n      t = T[s.language];\n      s.current_step = 'choose_visa_type';\n      reply = t.askVisa; route = 'visa';\n    } else { reply = 'Please choose your language / దయచేసి మీ భాషను ఎంచుకోండి:'; route = 'language'; }\n    break;\n  }\n  case 'choose_visa_type': {\n    if (VISA[input]) {\n      s.visa_type = VISA[input];\n      s.current_step = 'choose_country';\n      reply = t.askCountry; route = 'country';\n    } else { reply = t.useButtons + '\\n\\n' + t.askVisa; route = 'visa'; }\n    break;\n  }\n  case 'choose_country': {\n    if (COUNTRY[input]) {\n      s.country = COUNTRY[input];\n      s.current_step = 'ask_full_name';\n      reply = t.askName;\n    } else if (input === 'c_other') {\n      s.current_step = 'ask_other_country';\n      reply = t.askOther;\n    } else { reply = t.useButtons + '\\n\\n' + t.askCountry; route = 'country'; }\n    break;\n  }\n  case 'ask_other_country': {\n    if (/^[A-Za-z][A-Za-z .'-]{2,55}$/.test(input)) {\n      s.country = input.replace(/\\s+/g, ' ');\n      s.current_step = 'ask_full_name';\n      reply = t.askName;\n    } else reply = t.badCountry;\n    break;\n  }\n  case 'ask_full_name': {\n    const v = input.replace(/\\s+/g, ' ');\n    if (/^[A-Za-z][A-Za-z .'-]{2,}$/.test(v) && v.replace(/[^A-Za-z]/g, '').length >= 3) {\n      s.full_name = v; s.current_step = 'ask_dob'; reply = t.askDob;\n    } else reply = t.badName;\n    break;\n  }\n  case 'ask_dob': {\n    if (validDob(input)) { s.dob = input; s.current_step = 'ask_passport'; reply = t.askPassport; }\n    else reply = t.badDob;\n    break;\n  }\n  case 'ask_passport': {\n    const v = input.toUpperCase().replace(/\\s+/g, '');\n    if (/^[A-Z0-9]{6,9}$/.test(v) && /[A-Z]/.test(v) && /\\d/.test(v)) {\n      s.passport = v; s.current_step = 'ask_email'; reply = t.askEmail;\n    } else reply = t.badPassport;\n    break;\n  }\n  case 'ask_email': {\n    const v = input.toLowerCase();\n    if (/^[^\\s@]+@[^\\s@]+\\.[a-z]{2,}$/.test(v)) { s.email = v; s.current_step = 'ask_phone'; reply = t.askPhone; }\n    else reply = t.badEmail;\n    break;\n  }\n  case 'ask_phone': {\n    const v = input.replace(/[\\s()-]/g, '');\n    if (/^\\+[1-9]\\d{7,14}$/.test(v)) {\n      s.phone = v; s.current_step = 'review'; reply = reviewText(); route = 'review';\n    } else reply = t.badPhone;\n    break;\n  }\n  case 'review': {\n    if (input === 'review_confirm') {\n      const appId = 'VISA' + new Date().getFullYear() + String(Date.now()).slice(-6);\n      s.app_id = appId;\n      s.status = 'submitted';\n      s.current_step = 'submitted';\n      route = 'submit';\n      reply = t.success.replace('{id}', appId);\n      const parts = String(s.full_name || '').split(' ');\n      application = {\n        'Application ID': appId,\n        'Name': parts[0] || '',\n        'Surname': parts.slice(1).join(' '),\n        'DOB': s.dob,\n        'Mail ID': s.email,\n        'Phone number': s.phone,\n        'Passport Number': s.passport,\n        'DESTINATION COUNTRY': s.country,\n        'Visa Type': s.visa_type,\n        'Telegram Chat ID': String(u.chat_id),\n        'Telegram Username': s.username || '',\n        'Language': s.language || 'en',\n        'Submitted At': new Date().toISOString(),\n      };\n    } else if (input === 'review_edit') {\n      s.current_step = 'choose_visa_type';\n      reply = t.askVisa; route = 'visa';\n    } else if (input === 'review_cancel') {\n      s.current_step = 'start';\n      s.status = 'cancelled';\n      reply = t.cancelled;\n    } else { reply = reviewText(); route = 'review'; }\n    break;\n  }\n  case 'submitted': {\n    reply = t.submittedAlready.replace('{id}', s.app_id || '-');\n    break;\n  }\n  default: {\n    s.current_step = 'start';\n    reply = 'Please choose your language / దయచేసి మీ భాషను ఎంచుకోండి:'; route = 'language';\n  }\n}\n\ns.chat_id = String(u.chat_id);\ns.updated_at = new Date().toISOString();\nif (s.status !== 'submitted' && s.status !== 'cancelled') s.status = 'in_progress';\ndelete s.row_number;\n\nreturn {\n  chat_id: String(u.chat_id),\n  is_callback: u.is_callback,\n  callback_id: u.callback_id,\n  route,\n  reply_text: reply,\n  session: s,\n  application,\n};"
+      },
+      "id": "d95294f3-d4d8-4d36-b034-99ed9053dc20",
+      "name": "Process Step",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1072,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cb",
+              "leftValue": "={{ $json.callback_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a2284f7c-dd4f-4c07-977f-6704bcf3b8f6",
+      "name": "Is Button Click?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1296,
+        -192
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{ $json.callback_id }}",
+        "additionalFields": {}
+      },
+      "id": "923967e9-2959-43bf-9ae1-e41ff7f120b6",
+      "name": "Answer Callback Query",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1520,
+        -192
+      ],
+      "webhookId": "2f10c3e0-12cc-442f-b4e7-ef8c1ed66442",
+      "credentials": {
+        "telegramApi": {
+          "id": "7BIktcKReXe6N1qT",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify($json.session) }}",
+        "options": {}
+      },
+      "id": "7fc6ffd1-1eac-46b2-bccb-2717847c94d6",
+      "name": "Prepare Session Row",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1296,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1GyUhJtO8ok7zm4amZ_CswqTGfN78cs7g-O4XcpfLXbA",
+          "cachedResultName": "Visa information"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "2026392259",
+          "cachedResultName": "Sessions"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "matchingColumns": [
+            "chat_id"
+          ],
+          "value": {},
+          "schema": [
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "current_step",
+              "displayName": "current_step",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "language",
+              "displayName": "language",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "visa_type",
+              "displayName": "visa_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "country",
+              "displayName": "country",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "first_name",
+              "displayName": "first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "username",
+              "displayName": "username",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW",
+          "handlingExtraData": "insertInNewColumn"
+        }
+      },
+      "id": "e31e43d8-f086-49a7-8865-abf3f1c80b46",
+      "name": "Update Session",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1520,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SxpfDDbXRkfdq0g8",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $(\"Process Step\").item.json.route }}",
+                    "rightValue": "language",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "797254fe-f5b3-4f01-8a28-647123e28a04"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "language"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $(\"Process Step\").item.json.route }}",
+                    "rightValue": "visa",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "f67f9e1a-8a7d-4347-9813-7b790d765cbd"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "visa"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $(\"Process Step\").item.json.route }}",
+                    "rightValue": "country",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "e43ad93c-fc57-4494-be85-2a21c9501dcc"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "country"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $(\"Process Step\").item.json.route }}",
+                    "rightValue": "review",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "7cc290b8-d7d8-4cda-88ac-eb553e0f8251"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "review"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $(\"Process Step\").item.json.route }}",
+                    "rightValue": "submit",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "97e0df0f-6a10-47bd-bac6-ae72de57da88"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "submit"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "text"
+        }
+      },
+      "id": "7c27edc3-c2b6-479f-b55e-8678d832d0bb",
+      "name": "Route Next Question",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1952,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $(\"Process Step\").item.json.chat_id }}",
+        "text": "={{ $(\"Process Step\").item.json.reply_text }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "English",
+                    "additionalFields": {
+                      "callback_data": "lang_en"
+                    }
+                  },
+                  {
+                    "text": "తెలుగు (Telugu)",
+                    "additionalFields": {
+                      "callback_data": "lang_te"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "13df380c-e74e-4026-861f-3960043cbc1f",
+      "name": "Ask Language",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2176,
+        -480
+      ],
+      "webhookId": "322294e2-7059-4cd2-a2a8-6c5dfb747fb6",
+      "credentials": {
+        "telegramApi": {
+          "id": "7BIktcKReXe6N1qT",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $(\"Process Step\").item.json.chat_id }}",
+        "text": "={{ $(\"Process Step\").item.json.reply_text }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "Tourist",
+                    "additionalFields": {
+                      "callback_data": "visa_tourist"
+                    }
+                  },
+                  {
+                    "text": "Student",
+                    "additionalFields": {
+                      "callback_data": "visa_student"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "Work",
+                    "additionalFields": {
+                      "callback_data": "visa_work"
+                    }
+                  },
+                  {
+                    "text": "Business",
+                    "additionalFields": {
+                      "callback_data": "visa_business"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "99e44407-4339-4806-b3c2-52e6735b4da3",
+      "name": "Ask Visa Type",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2176,
+        -288
+      ],
+      "webhookId": "d05c4ae6-2fcf-47b7-9bb5-84b52922f0da",
+      "credentials": {
+        "telegramApi": {
+          "id": "7BIktcKReXe6N1qT",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $(\"Process Step\").item.json.chat_id }}",
+        "text": "={{ $(\"Process Step\").item.json.reply_text }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "USA",
+                    "additionalFields": {
+                      "callback_data": "c_usa"
+                    }
+                  },
+                  {
+                    "text": "UK",
+                    "additionalFields": {
+                      "callback_data": "c_uk"
+                    }
+                  },
+                  {
+                    "text": "Canada",
+                    "additionalFields": {
+                      "callback_data": "c_canada"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "Australia",
+                    "additionalFields": {
+                      "callback_data": "c_australia"
+                    }
+                  },
+                  {
+                    "text": "Germany",
+                    "additionalFields": {
+                      "callback_data": "c_germany"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "Other country",
+                    "additionalFields": {
+                      "callback_data": "c_other"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "1021c217-bbca-4c91-b82e-bcfdfdfaf58d",
+      "name": "Ask Country",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2176,
+        -96
+      ],
+      "webhookId": "c2f7f2db-2c08-4499-92b0-1bdb0e1e2697",
+      "credentials": {
+        "telegramApi": {
+          "id": "7BIktcKReXe6N1qT",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $(\"Process Step\").item.json.chat_id }}",
+        "text": "={{ $(\"Process Step\").item.json.reply_text }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "Confirm",
+                    "additionalFields": {
+                      "callback_data": "review_confirm"
+                    }
+                  },
+                  {
+                    "text": "Edit",
+                    "additionalFields": {
+                      "callback_data": "review_edit"
+                    }
+                  },
+                  {
+                    "text": "Cancel",
+                    "additionalFields": {
+                      "callback_data": "review_cancel"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "20ff9a4a-a681-4e8e-be4c-b6a937e1f047",
+      "name": "Show Review",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2176,
+        96
+      ],
+      "webhookId": "ee10bb51-ff50-48bc-91dd-67272cc32611",
+      "credentials": {
+        "telegramApi": {
+          "id": "7BIktcKReXe6N1qT",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify($(\"Process Step\").item.json.application) }}",
+        "options": {}
+      },
+      "id": "aeca38ec-9e12-499a-a83d-a007822899b1",
+      "name": "Prepare Application Row",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        2176,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1GyUhJtO8ok7zm4amZ_CswqTGfN78cs7g-O4XcpfLXbA",
+          "cachedResultName": "Visa information"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gid=0",
+          "cachedResultName": "Applications"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Surname",
+              "displayName": "Surname",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "DOB",
+              "displayName": "DOB",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Mail ID",
+              "displayName": "Mail ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone number",
+              "displayName": "Phone number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Passport Number",
+              "displayName": "Passport Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "DESTINATION COUNTRY",
+              "displayName": "DESTINATION COUNTRY",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW",
+          "handlingExtraData": "insertInNewColumn"
+        }
+      },
+      "id": "e623ec39-b8ab-41bd-b11b-a7a3b5fdfd20",
+      "name": "Save Application",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2400,
+        288
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SxpfDDbXRkfdq0g8",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $(\"Process Step\").item.json.chat_id }}",
+        "text": "={{ $(\"Process Step\").item.json.reply_text }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "3823300d-f3ac-45c4-87a2-eb63bb04ba3d",
+      "name": "Send Success Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2624,
+        288
+      ],
+      "webhookId": "aea60c6a-51e1-4c3a-a6af-636952c5b68a",
+      "credentials": {
+        "telegramApi": {
+          "id": "7BIktcKReXe6N1qT",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $(\"Normalize Telegram Update\").item.json.chat_id }}",
+        "text": "=New visa application received\n\n<b>ID:</b> {{ $(\"Process Step\").item.json.application[\"Application ID\"] }}\n<b>Name:</b> {{ $(\"Process Step\").item.json.session.full_name }}\n<b>Visa:</b> {{ $(\"Process Step\").item.json.session.visa_type }}\n<b>Country:</b> {{ $(\"Process Step\").item.json.session.country }}\n<b>DOB:</b> {{ $(\"Process Step\").item.json.session.dob }}\n<b>Passport:</b> {{ $(\"Process Step\").item.json.session.passport }}\n<b>Email:</b> {{ $(\"Process Step\").item.json.session.email }}\n<b>Phone:</b> {{ $(\"Process Step\").item.json.session.phone }}\n",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "86411aa9-3539-4589-9b1d-b2c5fddff336",
+      "name": "Notify Visa Consultant",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2848,
+        288
+      ],
+      "webhookId": "66219108-f130-42fe-99d1-2351e86e1a30",
+      "credentials": {
+        "telegramApi": {
+          "id": "7BIktcKReXe6N1qT",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $(\"Process Step\").item.json.chat_id }}",
+        "text": "={{ $(\"Process Step\").item.json.reply_text }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "3b6ea896-2eea-46a4-a5e8-91149d74c3d7",
+      "name": "Ask Next Question",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2176,
+        480
+      ],
+      "webhookId": "9257b023-37f8-46e5-a05e-31070c5d51d3",
+      "credentials": {
+        "telegramApi": {
+          "id": "7BIktcKReXe6N1qT",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $(\"Normalize Telegram Update\").item.json.chat_id }}",
+        "text": "=Welcome to A2Z Visa Consultancy Service.\n\nPlease select your preferred language.",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "English",
+                    "additionalFields": {
+                      "callback_data": "lang_en"
+                    }
+                  },
+                  {
+                    "text": "తెలుగు (Telugu)",
+                    "additionalFields": {
+                      "callback_data": "lang_te"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "b02909f6-1603-41d5-8117-607b1ca13856",
+      "name": "Send Language Selection",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1376,
+        592
+      ],
+      "webhookId": "9c49b34f-0d77-4df3-af9a-8c109c474f0f",
+      "credentials": {
+        "telegramApi": {
+          "id": "7BIktcKReXe6N1qT",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1GyUhJtO8ok7zm4amZ_CswqTGfN78cs7g-O4XcpfLXbA",
+          "cachedResultName": "Visa information"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "2026392259",
+          "cachedResultName": "Sessions"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "chat_id"
+          ],
+          "value": {
+            "chat_id": "={{ $(\"Normalize Telegram Update\").item.json.chat_id }}",
+            "current_step": "start",
+            "language": "",
+            "visa_type": "",
+            "country": "",
+            "status": "in_progress",
+            "first_name": "={{ $(\"Normalize Telegram Update\").item.json.first_name }}",
+            "username": "={{ $(\"Normalize Telegram Update\").item.json.username }}",
+            "updated_at": "={{ $now.toISO() }}"
+          },
+          "schema": [
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "current_step",
+              "displayName": "current_step",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "language",
+              "displayName": "language",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "visa_type",
+              "displayName": "visa_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "country",
+              "displayName": "country",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "first_name",
+              "displayName": "first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "username",
+              "displayName": "username",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "56cef752-40a9-4398-9c8e-703f8500fec1",
+      "name": "Create Session",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1152,
+        592
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SxpfDDbXRkfdq0g8",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Telegram Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Telegram Update": {
+      "main": [
+        [
+          {
+            "node": "Get Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Session": {
+      "main": [
+        [
+          {
+            "node": "Session Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Session Exists?": {
+      "main": [
+        [
+          {
+            "node": "Process Step",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Step": {
+      "main": [
+        [
+          {
+            "node": "Is Button Click?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare Session Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Button Click?": {
+      "main": [
+        [
+          {
+            "node": "Answer Callback Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Session Row": {
+      "main": [
+        [
+          {
+            "node": "Update Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Session": {
+      "main": [
+        [
+          {
+            "node": "Route Next Question",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Next Question": {
+      "main": [
+        [
+          {
+            "node": "Ask Language",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ask Visa Type",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ask Country",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Show Review",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Application Row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ask Next Question",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Application Row": {
+      "main": [
+        [
+          {
+            "node": "Save Application",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Application": {
+      "main": [
+        [
+          {
+            "node": "Send Success Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Success Message": {
+      "main": [
+        [
+          {
+            "node": "Notify Visa Consultant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Session": {
+      "main": [
+        [
+          {
+            "node": "Send Language Selection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "4ce75296-6e97-41ed-a223-5297b35d6137",
+  "meta": {
+    "instanceId": "e0d068ee11a6df5be7c91ab6b86dabce645a95d129c9260403cf9ad6dbe57cb9"
+  },
+  "nodeGroups": [
+    {
+      "id": "d773ab45-7752-4599-8725-c6d813728498",
+      "name": "Reply and submit",
+      "nodeIds": [
+        "7c27edc3-c2b6-479f-b55e-8678d832d0bb",
+        "13df380c-e74e-4026-861f-3960043cbc1f",
+        "99e44407-4339-4806-b3c2-52e6735b4da3",
+        "1021c217-bbca-4c91-b82e-bcfdfdfaf58d",
+        "20ff9a4a-a681-4e8e-be4c-b6a937e1f047",
+        "3b6ea896-2eea-46a4-a5e8-91149d74c3d7",
+        "aeca38ec-9e12-499a-a83d-a007822899b1",
+        "e623ec39-b8ab-41bd-b11b-a7a3b5fdfd20",
+        "3823300d-f3ac-45c4-87a2-eb63bb04ba3d",
+        "86411aa9-3539-4589-9b1d-b2c5fddff336"
+      ],
+      "description": "Sends the next prompt with buttons; on confirm stores the application, sends the applicant an ID and alerts the consultant"
+    }
+  ],
+  "id": "Ciy9jLUiTP8RaI3k",
+  "tags": []
+}
